@@ -111,7 +111,7 @@ static inline struct bplus_node *non_leaf_new(struct bplus_tree *tree)
         return node;
 }
 
-static inline struct bplus_node *leaf_new(struct bplus_tree *tree)
+static inline struct bplus_node * leaf_new(struct bplus_tree *tree)
 {
         struct bplus_node *node = node_new(tree);
         node->type = BPLUS_TREE_LEAF;
@@ -339,7 +339,7 @@ static key_t non_leaf_split_left(struct bplus_tree *tree, struct bplus_node *nod
 
         /* insert new key and sub-nodes and locate the split key */
         key(left)[pivot] = key;
-        if (pivot == split - 1) {
+          if (pivot == split - 1) {
                 /* left child in split left node and right child in original right one */
                 sub_node_update(tree, left, pivot, l_ch);
                 sub_node_update(tree, node, 0, r_ch);
@@ -415,8 +415,8 @@ static key_t non_leaf_split_right2(struct bplus_tree *tree, struct bplus_node *n
 
         /* calculate split nodes' children (sum as (order + 1))*/
         int pivot = insert - split - 1;
-        node->children = split + 1;
-        right->children = _max_order - split;
+        node->children = split + 1; // child branch num, not key num
+        right->children = _max_order - split; // child branch num, not key num
 
         /* sum = right->children = pivot + 2 + (_max_order - insert - 1) */
         /* replicate from key[split + 1] to key[insert] */
@@ -438,7 +438,7 @@ static key_t non_leaf_split_right2(struct bplus_tree *tree, struct bplus_node *n
                         sub_node_flush(tree, right, sub(right)[i]);
                 }
         }
-
+        key_t tmp = key(node)[split];
         return split_key;
 }
 
@@ -464,10 +464,10 @@ static int non_leaf_insert(struct bplus_tree *tree, struct bplus_node *node,
         insert = -insert - 1;
 
         /* node is full */
-        if (node->children == _max_order) {
+        if (node->children == _max_order) { // num of child branches equal _max_order
                 key_t split_key;
                 /* split = [m/2] */
-                int split = (node->children + 1) / 2;
+                int split = (node->children + 1) / 2; // 这里应该是希望split后，左右孩子节点的 child branch数量差不多，split取得是child branch数量的0.5
                 struct bplus_node *sibling = non_leaf_new(tree);
                 if (insert < split) {
                         split_key = non_leaf_split_left(tree, node, sibling, l_ch, r_ch, key, insert);
@@ -501,7 +501,7 @@ static key_t leaf_split_left(struct bplus_tree *tree, struct bplus_node *leaf,
 
         /* calculate split leaves' children (sum as (entries + 1)) */
         int pivot = insert;
-        left->children = split;
+        left->children = split;  // num of entries [key(leaf)[0], key(leaf)[split-1]) + insert
         leaf->children = _max_entries - split + 1;
 
         /* sum = left->children = pivot + 1 + (split - pivot - 1) */
@@ -521,7 +521,7 @@ static key_t leaf_split_left(struct bplus_tree *tree, struct bplus_node *leaf,
         memmove(&key(leaf)[0], &key(leaf)[split - 1], leaf->children * sizeof(key_t));
         memmove(&data(leaf)[0], &data(leaf)[split - 1], leaf->children * sizeof(long));
 
-        return key(leaf)[0];
+        return key(leaf)[0];  // first element of left child as split_key(insert into parent)
 }
 
 static key_t leaf_split_right(struct bplus_tree *tree, struct bplus_node *leaf,
@@ -898,11 +898,14 @@ static int leaf_remove(struct bplus_tree *tree, struct bplus_node *leaf, key_t k
                 struct bplus_node *r_sib = node_fetch(tree, leaf->next);
                 struct bplus_node *parent = node_fetch(tree, leaf->parent);
 
+          // 如果key(leaf)[0]在parent中存在则返回对应的index，否则返回
+          // 如果不存在parent中最后一个小于key(leaf)[0]的元素索引，后续如果发生兄弟节点的合并需要修改parent中该index位置的值
                 i = parent_key_index(parent, key(leaf)[0]);
 
                 /* decide which sibling to be borrowed from */
                 if (sibling_select(l_sib, r_sib, parent, i) == LEFT_SIBLING) {
                         if (l_sib->children > (_max_entries + 1) / 2) {
+                                // 从left 节点接一个元素
                                 leaf_shift_from_left(tree, leaf, l_sib, parent, i, remove);
                                 /* flush leaves */
                                 node_flush(tree, leaf);
