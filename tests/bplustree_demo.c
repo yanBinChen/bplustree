@@ -90,6 +90,9 @@ static void _proc(struct bplus_tree *tree, char op, int n)
 {
         switch (op) {
                 case 'i':
+                      if (n == 223) {
+                        printf("last");
+                      }
                         bplus_tree_put(tree, n, n);
                         break;
                 case 'r':
@@ -177,7 +180,7 @@ static void command_tips(void)
 static void command_process(struct bplus_tree *tree)
 {
         int c;
-        printf("Please input command (Type 'h' for help): ");
+        printf("Please input command (Type 'h' for help): \n");
         for (; ;) {
                 switch (c = getchar()) {
                 case EOF:
@@ -197,7 +200,7 @@ static void command_process(struct bplus_tree *tree)
                                 return;
                         }
                 case '\n':
-                        printf("Please input command (Type 'h' for help): ");
+                        printf("Please input command (Type 'h' for help): \n");
                 default:
                         break;
                 }
